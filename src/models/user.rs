@@ -1,14 +1,19 @@
 use argon2::{self, Config as Argon2Config};
 use async_graphql::Object;
+use mongodb::bson::oid::ObjectId;
 use rand_core::{OsRng, RngCore};
 use secrecy::{ExposeSecret, Secret};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
-    uuid: Uuid,
-    email: String,
-    username: String,
+    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    pub id: Option<ObjectId>,
+    #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
+    pub uuid: Uuid,
+    pub email: String,
+    pub username: String,
     password: String,
 }
 
@@ -21,6 +26,7 @@ impl User {
         let cfg = Argon2Config::default();
         let hashed_password = argon2::hash_encoded(password, &salt, &cfg).unwrap();
         Self {
+            id: None,
             uuid,
             email: email.to_string(),
             username: username.to_string(),
@@ -36,17 +42,17 @@ impl User {
 #[Object]
 impl User {
     /// The user's unique identifier.
-    async fn uuid(&self) -> Uuid {
+    pub async fn uuid(&self) -> Uuid {
         self.uuid
     }
 
     /// The user's email address.
-    async fn email(&self) -> &str {
+    pub async fn email(&self) -> &str {
         &self.email
     }
 
     /// The user's username.
-    async fn username(&self) -> &str {
+    pub async fn username(&self) -> &str {
         &self.username
     }
 }

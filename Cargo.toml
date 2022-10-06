@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wither = "0.9.0"
+mongodb = { versoin = "2.3.1", features = ["tokio-runtime", "bson-uuid-0_8"] }
 tokio = { version = "1.21.2", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -23,3 +23,5 @@ rust-argon2 = "1.0"
 secrecy = "0.8.0"
 rand_core = { version = "0.6", features = ["std"] }
 log = "0.4.17"
+async-trait = "0.1.57"
+bson = {version = "2.4.0", features = ["uuid-1", "serde_with", "default"]}

@@ -2,11 +2,15 @@ mod models;
 mod repos;
 
 use actix_web::{guard, middleware::Logger, web, web::Data, App, HttpResponse, HttpServer};
-use async_graphql::{http::GraphiQLSource, EmptySubscription, Schema};
+use async_graphql::{
+    extensions::{Analyzer, ApolloTracing, Logger as GQLLogger},
+    http::GraphiQLSource,
+    EmptySubscription, Schema,
+};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use dotenv::dotenv;
 use log::info;
-use models::{MutationRoot, QueryRoot};
+use models::{mutations::MutationRoot, QueryRoot};
 use mongodb::{options::ClientOptions, Client};
 use std::env;
 
@@ -50,16 +54,15 @@ async fn main() -> std::io::Result<()> {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
-            .app_data(Data::new(Schema::new(
-                QueryRoot {
-                    user_repo: user_repo.clone(),
-                },
-                MutationRoot {
-                    user_repo: user_repo.clone(),
-                },
-                EmptySubscription,
-            )))
-            .app_data(Data::new(user_repo.clone()))
+            .app_data(Data::new(
+                Schema::build(QueryRoot, MutationRoot, EmptySubscription)
+                    .extension(ApolloTracing)
+                    .extension(GQLLogger)
+                    .extension(Analyzer)
+                    .data(user_repo.clone())
+                    .finish(),
+            ))
+            // https://async-graphql.github.io/async-graphql/en/context.html#schema-data
             .service(web::resource("/").guard(guard::Post()).to(index))
             .service(web::resource("/").guard(guard::Get()).to(gql_playgound))
     })

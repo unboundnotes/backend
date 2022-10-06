@@ -1,19 +1,28 @@
 use argon2::{self, Config as Argon2Config};
-use async_graphql::Object;
+use async_graphql::SimpleObject;
 use mongodb::bson::oid::ObjectId;
 use rand_core::{OsRng, RngCore};
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, SimpleObject)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
+    #[graphql(skip)]
     pub id: Option<ObjectId>,
+
+    /// The user's unique identifier.
     #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
     pub uuid: Uuid,
+
+    /// The user's email address.
     pub email: String,
+
+    /// The user's username.
     pub username: String,
+
+    #[graphql(skip)]
     password: String,
 }
 
@@ -39,20 +48,19 @@ impl User {
     }
 }
 
-#[Object]
-impl User {
-    /// The user's unique identifier.
-    pub async fn uuid(&self) -> Uuid {
-        self.uuid
-    }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use secrecy::Secret;
 
-    /// The user's email address.
-    pub async fn email(&self) -> &str {
-        &self.email
-    }
-
-    /// The user's username.
-    pub async fn username(&self) -> &str {
-        &self.username
+    #[test]
+    fn test_check_password() {
+        let user = User::new(
+            "test@example.com",
+            "test",
+            Secret::new("password".to_string()),
+        );
+        assert!(user.check_password("password"));
+        assert!(!user.check_password("wrong_password"));
     }
 }

@@ -13,7 +13,7 @@ pub struct MongoDBUserRepo {
 }
 
 impl MongoDBUserRepo {
-    pub async fn new(db: &Database) -> Self {
+    pub fn new(db: &Database) -> Self {
         let collection = db.collection::<User>("users");
         Self { col: collection }
     }

@@ -1231,6 +1231,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "jwt"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6204285f77fe7d9784db3fdc449ecce1a0114927a51d5a41c4c7a292011c015f"
+dependencies = [
+ "base64",
+ "crypto-common",
+ "digest",
+ "hmac",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "language-tags"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2259,6 +2274,8 @@ dependencies = [
  "bson",
  "chrono",
  "dotenv",
+ "hmac",
+ "jwt",
  "log",
  "mongodb",
  "pretty_env_logger",
@@ -2267,6 +2284,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
+ "sha2",
  "thiserror",
  "tokio",
  "uuid 1.1.2",

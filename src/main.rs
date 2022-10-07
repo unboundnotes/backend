@@ -1,5 +1,7 @@
 mod models;
 mod repos;
+mod resolvers;
+mod utils;
 
 use actix_web::{guard, middleware::Logger, web, web::Data, App, HttpResponse, HttpServer};
 use async_graphql::{
@@ -10,18 +12,38 @@ use async_graphql::{
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use dotenv::dotenv;
 use log::info;
-use models::{mutations::MutationRoot, QueryRoot};
 use mongodb::{options::ClientOptions, Client};
+use repos::traits::UserRepo;
+use resolvers::{MutationsRoot, QueryRoot};
 use std::env;
+use utils::jwt::verify_token;
 
 use crate::repos::mongodb_user_repo::MongoDBUserRepo;
 
 async fn index(
-    schema: web::Data<Schema<QueryRoot, MutationRoot, EmptySubscription>>,
-
+    schema: web::Data<Schema<QueryRoot, MutationsRoot, EmptySubscription>>,
+    db: web::Data<MongoDBUserRepo>,
     req: GraphQLRequest,
+    http_req: actix_web::HttpRequest,
 ) -> GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
+    let mut loggedin_user = None;
+    if let Some(header_data) = http_req
+        .headers()
+        .get(actix_web::http::header::AUTHORIZATION)
+    {
+        if let Ok(header) = header_data.to_str() {
+            if let Some(token) = header.split("Bearer ").last() {
+                if let Ok(uuid) = verify_token(token) {
+                    loggedin_user = db.get_user_by_uuid(&uuid).await.unwrap();
+                }
+            }
+        }
+    }
+
+    schema
+        .execute(req.into_inner().data(loggedin_user))
+        .await
+        .into()
 }
 
 async fn gql_playgound() -> HttpResponse {
@@ -48,25 +70,29 @@ async fn main() -> std::io::Result<()> {
 
     info!("GraphiQL IDE: http://localhost:8000");
 
-    let user_repo = MongoDBUserRepo::new(&db).await;
+    let user_repo = MongoDBUserRepo::new(&db);
 
     HttpServer::new(move || {
         let logger = Logger::default();
         App::new()
             .wrap(logger)
             .app_data(Data::new(
-                Schema::build(QueryRoot, MutationRoot, EmptySubscription)
-                    .extension(ApolloTracing)
-                    .extension(GQLLogger)
-                    .extension(Analyzer)
-                    .data(user_repo.clone())
-                    .finish(),
+                Schema::build(
+                    QueryRoot::default(),
+                    MutationsRoot::default(),
+                    EmptySubscription,
+                )
+                .extension(ApolloTracing)
+                .extension(GQLLogger)
+                .extension(Analyzer)
+                .data(user_repo.clone())
+                .finish(),
             ))
-            // https://async-graphql.github.io/async-graphql/en/context.html#schema-data
+            .app_data(Data::new(user_repo.clone()))
             .service(web::resource("/").guard(guard::Post()).to(index))
             .service(web::resource("/").guard(guard::Get()).to(gql_playgound))
     })
-    .bind("127.0.0.1:8000")?
+    .bind("0.0.0.0:8000")?
     .run()
     .await
 }

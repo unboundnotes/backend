@@ -27,7 +27,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(email: &str, username: &str, password: Secret<String>) -> Self {
+    pub fn new(email: &str, username: &str, password: &Secret<String>) -> Self {
         let uuid = Uuid::new_v4();
         let password = password.expose_secret().as_bytes();
         let mut salt = [0u8; 16];
@@ -43,8 +43,8 @@ impl User {
         }
     }
 
-    pub fn check_password(&self, password: &str) -> bool {
-        argon2::verify_encoded(&self.password, password.as_bytes()).unwrap()
+    pub fn check_password(&self, password: &Secret<String>) -> bool {
+        argon2::verify_encoded(&self.password, password.expose_secret().as_bytes()).unwrap()
     }
 }
 
@@ -58,9 +58,9 @@ mod tests {
         let user = User::new(
             "test@example.com",
             "test",
-            Secret::new("password".to_string()),
+            &Secret::new("password".to_string()),
         );
-        assert!(user.check_password("password"));
-        assert!(!user.check_password("wrong_password"));
+        assert!(user.check_password(&Secret::new("password".to_string())));
+        assert!(!user.check_password(&Secret::new("wrong password".to_string())));
     }
 }

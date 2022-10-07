@@ -1,0 +1,25 @@
+use anyhow::Result;
+use hmac::{Hmac, Mac};
+use jwt::{SignWithKey, VerifyWithKey};
+use sha2::Sha256;
+use std::collections::BTreeMap;
+use uuid::Uuid;
+
+use crate::models::user::User;
+
+pub fn generate_jwt(user: &User) -> Result<String> {
+    let secret = std::env::var("JWT_SECRET")?;
+    let mut claims = BTreeMap::new();
+    claims.insert("sub", user.uuid.to_string());
+    let key: Hmac<Sha256> = Hmac::new_from_slice(secret.as_bytes())?;
+    let token = claims.sign_with_key(&key)?;
+    Ok(token)
+}
+
+pub fn verify_token(token: &str) -> Result<Uuid> {
+    let secret = std::env::var("JWT_SECRET")?;
+    let key: Hmac<Sha256> = Hmac::new_from_slice(secret.as_bytes())?;
+    let claims: BTreeMap<String, String> = token.verify_with_key(&key)?;
+    let uuid = Uuid::parse_str(&claims["sub"])?;
+    Ok(uuid)
+}

@@ -7,8 +7,7 @@ use uuid::Uuid;
 
 use crate::models::user::User;
 
-pub fn generate_jwt(user: &User) -> Result<String> {
-    let secret = std::env::var("JWT_SECRET")?;
+pub fn generate_jwt(secret: &str, user: &User) -> Result<String> {
     let mut claims = BTreeMap::new();
     claims.insert("sub", user.uuid.to_string());
     let key: Hmac<Sha256> = Hmac::new_from_slice(secret.as_bytes())?;
@@ -16,8 +15,7 @@ pub fn generate_jwt(user: &User) -> Result<String> {
     Ok(token)
 }
 
-pub fn verify_token(token: &str) -> Result<Uuid> {
-    let secret = std::env::var("JWT_SECRET")?;
+pub fn verify_token(secret: &str, token: &str) -> Result<Uuid> {
     let key: Hmac<Sha256> = Hmac::new_from_slice(secret.as_bytes())?;
     let claims: BTreeMap<String, String> = token.verify_with_key(&key)?;
     let uuid = Uuid::parse_str(&claims["sub"])?;

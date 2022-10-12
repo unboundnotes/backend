@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_graphql::{Context, ErrorExtensions, FieldError, InputObject, Object, Result, ResultExt};
 use secrecy::Secret;
 use thiserror::Error;
@@ -6,7 +8,7 @@ use uuid::Uuid;
 use crate::{
     models::user::User,
     repos::{mongodb_user_repo::MongoDBUserRepo, traits::UserRepo},
-    utils::jwt::generate_jwt,
+    utils::{config::Config, jwt::generate_jwt},
 };
 
 #[derive(Debug, Error)]
@@ -41,7 +43,7 @@ pub struct UserQuery;
 #[Object]
 impl UserQuery {
     pub async fn get_user(&self, ctx: &Context<'_>, uuid: Uuid) -> Option<User> {
-        let user_repo = ctx.data::<MongoDBUserRepo>().unwrap();
+        let user_repo = ctx.data::<Arc<dyn UserRepo>>().unwrap();
         user_repo.get_user_by_uuid(&uuid).await.unwrap()
     }
 
@@ -95,6 +97,7 @@ impl UserMutation {
 
     pub async fn login_user(&self, ctx: &Context<'_>, login: LoginUserInput) -> Result<String> {
         let user_repo = ctx.data::<MongoDBUserRepo>().unwrap();
+        let config = ctx.data::<Config>().unwrap();
         let user = user_repo
             .get_user_by_login(&login.email)
             .await
@@ -104,7 +107,8 @@ impl UserMutation {
             return Err(UserMutationError::InvalidPassword.extend());
         }
 
-        let token = generate_jwt(&user).map_err(|e| UserMutationError::from(e).extend())?;
+        let token = generate_jwt(&config.jwt_secret, &user)
+            .map_err(|e| UserMutationError::from(e).extend())?;
         Ok(token)
     }
 }

@@ -61,7 +61,7 @@ async fn gql_playgound() -> HttpResponse {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     pretty_env_logger::init();
-    let config: BaseConfig = BaseConfig::build(&mut NopDataSource).unwrap();
+    let config: BaseConfig = BaseConfig::build(&mut NopDataSource, None).unwrap();
     let config = Arc::new(config);
 
     let mut client_options = ClientOptions::parse(&config.mongo_uri).await.unwrap();
@@ -88,7 +88,6 @@ async fn main() -> std::io::Result<()> {
                 .extension(ApolloTracing)
                 .extension(GQLLogger)
                 .extension(Analyzer)
-                // Instead of cloning the whole repo, use an Arc
                 .data(Arc::clone(&userrepo_arc))
                 .data(Arc::clone(&config_clone))
                 .finish(),

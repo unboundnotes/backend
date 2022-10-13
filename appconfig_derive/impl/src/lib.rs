@@ -118,7 +118,6 @@ pub fn app_config(input: TokenStream) -> TokenStream {
     // - config(datasource = "...")
     let attrs = parse_attrs(&fields);
 
-    // TODO: Implement special cases for the `std::collections` types, as well as `Option` and `AppConfig`
     let basic_fields = fields.iter().filter(|f| {
         let name = f.ident.as_ref().unwrap().to_string();
         attrs
@@ -229,11 +228,10 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         .chain(read_from_default_fn);
 
     // 6. Generate the `build` method
-    // 6a. TODO: Error out if any required fields are missing
     let create_basic_fields = basic_fields.clone().map(|f| {
         let name = &f.ident;
         quote! {
-            #name: builder.#name.unwrap()
+            #name: builder.#name.clone().ok_or(appconfig_derive::AppConfigError::FieldNotSetError(stringify!(name).to_string()))?
         }
     });
 
@@ -264,7 +262,14 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         .chain(create_nested_fields)
         .chain(create_skipped_fields);
 
-    // 7. TODO: Save fields to data store
+    let save_fields = basic_fields.clone().map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        let sname = name.to_string();
+        let key = attrs.get(&sname).map(|m| m.get(NAME)).flatten().or(Some(&sname)).unwrap().to_uppercase();
+        quote! {
+            data_src.set(&(prefix.clone().unwrap_or("".to_string()) + #key), builder.#name.unwrap().to_string())?;
+        }
+    });
 
     // 8. Read data from build params if skipped
     let extra_args = skipped_fields.clone().map(|f| {
@@ -288,9 +293,12 @@ pub fn app_config(input: TokenStream) -> TokenStream {
                 #(#assert_types)*
                 let mut builder = #name::default();
                 #(#read_fields)*
-                Ok(Self {
+                let res = Self {
                     #(#create_fields),*
-                })
+                };
+
+                #(#save_fields)*
+                Ok(res)
             }
         }
     };

@@ -4,10 +4,6 @@ mod tests {
 
     use appconfig_derive::*;
 
-    fn return_four() -> i32 {
-        return 4;
-    }
-
     struct MockDataSource {
         data: HashMap<String, String>,
     }
@@ -34,20 +30,6 @@ mod tests {
     #[derive(AppConfig)]
     pub struct ConfigStr {
         field: String,
-    }
-
-    #[derive(AppConfig)]
-    pub struct ConfigAttrs {
-        #[appconfig(default = "default", name = "attr_field")]
-        field: String,
-        #[appconfig(default = 4)]
-        field2: i32,
-    }
-
-    #[derive(AppConfig)]
-    pub struct ConfigDefaultFn {
-        #[appconfig(default_fn = return_four)]
-        field3: i32,
     }
 
     #[test]
@@ -79,6 +61,14 @@ mod tests {
         std::env::remove_var("FIELD");
     }
 
+    #[derive(AppConfig)]
+    pub struct ConfigAttrs {
+        #[appconfig(default = "default", name = "attr_field")]
+        field: String,
+        #[appconfig(default = 4)]
+        field2: i32,
+    }
+
     #[test]
     fn it_reads_name_from_attrs() {
         let mut data_src = MockDataSource::new();
@@ -95,6 +85,16 @@ mod tests {
         let config = ConfigAttrs::build(&mut data_src).unwrap();
         assert_eq!(config.field, "default");
         assert_eq!(config.field2, 4);
+    }
+
+    fn return_four() -> i32 {
+        return 4;
+    }
+
+    #[derive(AppConfig)]
+    pub struct ConfigDefaultFn {
+        #[appconfig(default_fn = return_four)]
+        field3: i32,
     }
 
     #[test]

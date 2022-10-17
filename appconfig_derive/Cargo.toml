@@ -1,0 +1,17 @@
+[package]
+name = "appconfig_derive"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[test]]
+name = "tests"
+path = "tests/test.rs"
+
+[dependencies]
+appconfig_derive-impl = { path = "impl" }
+static_assertions = "1.1.0"
+thiserror = "1.0.37"
+
+[dev-dependencies]
+pretty_assertions = "1.3.0"

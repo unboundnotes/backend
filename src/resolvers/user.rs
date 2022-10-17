@@ -102,7 +102,7 @@ impl UserMutation {
             .get_user_by_login(&login.email)
             .await
             .map_err(|e| UserMutationError::from(e).extend())?
-            .ok_or(UserMutationError::UserNotFound.extend())?;
+            .ok_or_else(|| UserMutationError::UserNotFound.extend())?;
         if !user.check_password(&Secret::new(login.password)) {
             return Err(UserMutationError::InvalidPassword.extend());
         }

@@ -11,6 +11,7 @@ const DEFAULT_FN: &str = "default_fn";
 const NESTED: &str = "nested";
 const SKIP: &str = "skip";
 const PREFIX: &str = "prefix";
+const DATA_SRC: &str = "data_src";
 
 enum MyLit {
     Lit(Lit),
@@ -18,9 +19,7 @@ enum MyLit {
 
 impl Display for MyLit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let lit = match self {
-            MyLit::Lit(lit) => lit,
-        };
+        let MyLit::Lit(lit) = self;
         match lit {
             Lit::Str(s) => write!(f, "{}", s.value()),
             Lit::Int(i) => write!(f, "{}", i.base10_digits()),
@@ -28,7 +27,7 @@ impl Display for MyLit {
             Lit::Byte(b) => write!(f, "{}", b.value()),
             Lit::Char(c) => write!(f, "{}", c.value()),
             Lit::Float(fl) => write!(f, "{}", fl.base10_digits()),
-            Lit::Verbatim(l) => write!(f, "{}", l.to_string()),
+            Lit::Verbatim(l) => write!(f, "{}", l),
             Lit::ByteStr(_) => todo!("ByteStr"),
         }
     }
@@ -43,7 +42,7 @@ fn split_tts(tts: TokenStream2) -> Vec<TokenStream2> {
         }
         let mut tts_ = Vec::new();
         tts_.push(tt);
-        while let Some(tt) = tts.next() {
+        for tt in tts.by_ref() {
             if tt.to_string() == "," {
                 break;
             }
@@ -83,7 +82,7 @@ fn parse_attrs<T>(fields: &Punctuated<Field, T>) -> HashMap<String, HashMap<Stri
                     let value = match *right {
                         syn::Expr::Lit(l) => MyLit::Lit(l.lit).to_string(),
                         syn::Expr::Path(p) => p.path.get_ident().unwrap().to_string(),
-                        _ => panic!("expected literal"),
+                        _ => panic!("expected literal, got {:?}", right),
                     };
                     field_attrs.insert(key, value);
                 }
@@ -168,7 +167,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         let name = &f.ident.as_ref().unwrap();
         let sname = name.to_string();
         let ty = &f.ty;
-        let key = attrs.get(&sname).map(|m| m.get(NAME)).flatten().or(Some(&sname)).unwrap().to_uppercase();
+        let key = attrs.get(&sname).and_then(|m| m.get(NAME)).unwrap_or(&sname).to_uppercase();
         quote! {
             match data_src.get(&(prefix.clone().unwrap_or("".to_string()) + #key)) {
                 Err(e) => return Err(appconfig_derive::AppConfigError::DatastoreError(e)),
@@ -186,7 +185,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         let name = &f.ident.as_ref().unwrap();
         let sname = name.to_string();
         let ty = &f.ty;
-        let key = attrs.get(&sname).map(|m| m.get(NAME)).flatten().or(Some(&sname)).unwrap().to_uppercase();
+        let key = attrs.get(&sname).and_then(|m| m.get(NAME)).unwrap_or(&sname).to_uppercase();
 
         quote! {
             builder.#name = builder.#name.or(
@@ -203,7 +202,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         let name = &f.ident.as_ref().unwrap();
         let sname = name.to_string();
         let ty = &f.ty;
-        let key = attrs.get(&sname).map(|m| m.get(DEFAULT)).flatten()?;
+        let key = attrs.get(&sname).and_then(|m| m.get(DEFAULT))?;
         Some(quote! {
             builder.#name = builder.#name.or(
                 Some(#key.parse::<#ty>().map_err(|e| appconfig_derive::AppConfigError::ParsingError(Box::new(e)))?)
@@ -215,8 +214,8 @@ pub fn app_config(input: TokenStream) -> TokenStream {
     let read_from_default_fn = fields.iter().filter_map(|f| {
         let name = &f.ident.as_ref().unwrap();
         let sname = name.to_string();
-        let fn_name = attrs.get(&sname).map(|m| m.get(DEFAULT_FN)).flatten()?;
-        let func = Ident::new(&fn_name, name.span());
+        let fn_name = attrs.get(&sname).and_then(|m| m.get(DEFAULT_FN))?;
+        let func = Ident::new(fn_name, name.span());
         Some(quote! {
             builder.#name = builder.#name.or(Some(#func()));
         })
@@ -239,22 +238,32 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         let name = &f.ident.as_ref().unwrap();
         let sname = name.to_string();
         let ty = &f.ty;
+        let dsrc: String = "data_src".to_string();
         let prefix = attrs
             .get(&sname)
-            .map(|m| m.get(PREFIX))
-            .flatten()
-            .or(Some(&(sname + "_")))
-            .unwrap()
+            .and_then(|m| m.get(PREFIX))
+            .unwrap_or(&(sname.clone() + "_"))
             .to_uppercase();
+        let data_src = attrs
+            .get(&sname)
+            .and_then(|m| m.get(DATA_SRC))
+            .unwrap_or(&dsrc);
+        let data_src = Ident::new(data_src, name.span());
         quote! {
-            #name: #ty::build(data_src, Some(#prefix.to_string()))?
+            #name: #ty::build(#data_src, Some(#prefix.to_string()))?
         }
     });
 
     let create_skipped_fields = skipped_fields.clone().map(|f| {
-        let name = &f.ident;
+        let name = &f.ident.as_ref().unwrap();
+        let sname = name.to_string();
+        let key = attrs
+            .get(&sname)
+            .and_then(|m| m.get(NAME))
+            .unwrap_or(&sname);
+        let ident = Ident::new(key, name.span());
         quote! {
-            #name,
+            #name: #ident,
         }
     });
 
@@ -265,20 +274,38 @@ pub fn app_config(input: TokenStream) -> TokenStream {
     let save_fields = basic_fields.clone().map(|f| {
         let name = &f.ident.as_ref().unwrap();
         let sname = name.to_string();
-        let key = attrs.get(&sname).map(|m| m.get(NAME)).flatten().or(Some(&sname)).unwrap().to_uppercase();
+        let key = attrs.get(&sname).and_then(|m| m.get(NAME)).unwrap_or(&sname).to_uppercase();
         quote! {
             data_src.set(&(prefix.clone().unwrap_or("".to_string()) + #key), builder.#name.unwrap().to_string())?;
         }
     });
 
     // 8. Read data from build params if skipped
-    let extra_args = skipped_fields.clone().map(|f| {
-        let name = &f.ident; // TODO: This should work with `name`
+    let extra_args_skipped_fields = skipped_fields.clone().map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        let sname = name.to_string();
+        let key = attrs
+            .get(&sname)
+            .and_then(|m| m.get(NAME))
+            .unwrap_or(&sname);
+        let ident = Ident::new(key, name.span());
         let ty = &f.ty;
         quote! {
-            , #name: #ty
+            , #ident: #ty
         }
     });
+
+    let extra_args_nested_fields = nested_fields.clone().filter_map(|f| {
+        let name = &f.ident.as_ref().unwrap();
+        let sname = name.to_string();
+        let data_src = attrs.get(&sname).and_then(|m| m.get(DATA_SRC))?;
+        let data_src = Ident::new(data_src, name.span());
+        Some(quote! {
+            , #data_src: &mut impl appconfig_derive::DataSource
+        })
+    });
+
+    let extra_args = extra_args_skipped_fields.chain(extra_args_nested_fields);
 
     let out = quote! {
         #[derive(Default)]

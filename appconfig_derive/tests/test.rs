@@ -182,4 +182,22 @@ mod tests {
         let config = ConfigNested3::build(&mut data_src, None).unwrap();
         assert_eq!(config.field7.field4, 7);
     }
+
+    #[derive(AppConfig)]
+    pub struct ConfigNested4 {
+        #[appconfig(nested, data_src = nested_data)]
+        field8: ConfigNested,
+    }
+
+    #[test]
+    fn it_reads_nested_with_data_src() {
+        let mut data_src = MockDataSource::new();
+        let mut nested_data = MockDataSource::new();
+        std::env::set_var("FIELD8_FIELD4", "8");
+
+        let config = ConfigNested4::build(&mut data_src, None, &mut nested_data).unwrap();
+        assert_eq!(config.field8.field4, 8);
+        assert_eq!(nested_data.get("FIELD8_FIELD4").unwrap().unwrap(), "8");
+        std::env::remove_var("FIELD8_FIELD4");
+    }
 }

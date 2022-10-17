@@ -5,7 +5,15 @@ mod utils;
 
 use std::sync::Arc;
 
+use crate::{
+    repos::mongodb_user_repo::MongoDBUserRepo,
+    utils::{
+        config::{BaseConfig, Config},
+        postgresql_data_source::PostgresqlDataSource,
+    },
+};
 use actix_web::{guard, middleware::Logger, web, web::Data, App, HttpResponse, HttpServer};
+use appconfig_derive::NopDataSource;
 use async_graphql::{
     extensions::{Analyzer, ApolloTracing, Logger as GQLLogger},
     http::GraphiQLSource,
@@ -17,11 +25,6 @@ use log::info;
 use mongodb::{options::ClientOptions, Client};
 use repos::traits::UserRepo;
 use resolvers::{MutationsRoot, QueryRoot};
-
-use crate::{
-    repos::mongodb_user_repo::MongoDBUserRepo,
-    utils::config::{BaseConfig, NopDataSource},
-};
 
 async fn index(
     schema: web::Data<Schema<QueryRoot, MutationsRoot, EmptySubscription>>,
@@ -61,13 +64,21 @@ async fn gql_playgound() -> HttpResponse {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     pretty_env_logger::init();
-    let config: BaseConfig = BaseConfig::build(&mut NopDataSource, None).unwrap();
+    let base_config = BaseConfig::build(&mut NopDataSource {}, None).unwrap();
+    let mut psql_ds = PostgresqlDataSource::new(
+        &base_config.postgres_host,
+        &base_config.postgres_user,
+        &base_config.postgres_password,
+        &base_config.postgres_db,
+    )
+    .unwrap();
+    let config = Config::build(&mut psql_ds, None, base_config).unwrap();
     let config = Arc::new(config);
 
-    let mut client_options = ClientOptions::parse(&config.mongo_uri).await.unwrap();
+    let mut client_options = ClientOptions::parse(&config.base.mongo_uri).await.unwrap();
     client_options.app_name = Some("unboundnotes".to_string());
     let client = Client::with_options(client_options).unwrap();
-    let db = client.database(&config.mongo_db);
+    let db = client.database(&config.base.mongo_db);
 
     info!("GraphiQL IDE: http://localhost:8000");
 
@@ -97,7 +108,7 @@ async fn main() -> std::io::Result<()> {
             .service(web::resource("/").guard(guard::Post()).to(index))
             .service(web::resource("/").guard(guard::Get()).to(gql_playgound))
     })
-    .bind(&config.bind_addr.clone())?
+    .bind(&config.base.bind_addr.clone())?
     .run()
     .await
 }

@@ -1,2 +1,2 @@
-pub mod mongodb_user_repo;
+pub mod postgres_users_repo;
 pub mod traits;

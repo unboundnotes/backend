@@ -12,6 +12,8 @@ path = "tests/test.rs"
 appconfig_derive-impl = { path = "impl" }
 static_assertions = "1.1.0"
 thiserror = "1.0.37"
+async-trait = "0.1.58"
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"
+tokio = { version = "1.21.2", features = ["full"] }

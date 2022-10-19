@@ -169,7 +169,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         let ty = &f.ty;
         let key = attrs.get(&sname).and_then(|m| m.get(NAME)).unwrap_or(&sname).to_uppercase();
         quote! {
-            match data_src.get(&(prefix.clone().unwrap_or("".to_string()) + #key)) {
+            match data_src.get(&(prefix.clone().unwrap_or("".to_string()) + #key)).await {
                 Err(e) => return Err(appconfig_derive::AppConfigError::DatastoreError(e)),
                 Ok(None) => {},
                 Ok(Some(value)) => {
@@ -230,7 +230,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
     let create_basic_fields = basic_fields.clone().map(|f| {
         let name = &f.ident;
         quote! {
-            #name: builder.#name.clone().ok_or(appconfig_derive::AppConfigError::FieldNotSetError(stringify!(name).to_string()))?
+            #name: builder.#name.clone().ok_or(appconfig_derive::AppConfigError::FieldNotSetError(stringify!(#name).to_string()))?
         }
     });
 
@@ -250,7 +250,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
             .unwrap_or(&dsrc);
         let data_src = Ident::new(data_src, name.span());
         quote! {
-            #name: #ty::build(#data_src, Some(#prefix.to_string()))?
+            #name: #ty::build(#data_src, Some(#prefix.to_string())).await?
         }
     });
 
@@ -276,7 +276,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         let sname = name.to_string();
         let key = attrs.get(&sname).and_then(|m| m.get(NAME)).unwrap_or(&sname).to_uppercase();
         quote! {
-            data_src.set(&(prefix.clone().unwrap_or("".to_string()) + #key), builder.#name.unwrap().to_string())?;
+            data_src.set(&(prefix.clone().unwrap_or("".to_string()) + #key), builder.#name.unwrap().to_string()).await?;
         }
     });
 
@@ -316,7 +316,7 @@ pub fn app_config(input: TokenStream) -> TokenStream {
         impl appconfig_derive::AppConfig for #orig_name {}
 
         impl #orig_name {
-            pub fn build(data_src: &mut impl appconfig_derive::DataSource, prefix: Option<String> #(#extra_args)*) -> Result<Self, appconfig_derive::AppConfigError> {
+            pub async fn build(data_src: &mut impl appconfig_derive::DataSource, prefix: Option<String> #(#extra_args)*) -> Result<Self, appconfig_derive::AppConfigError> {
                 #(#assert_types)*
                 let mut builder = #name::default();
                 #(#read_fields)*

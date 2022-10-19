@@ -1,12 +1,13 @@
 mod models;
 mod repos;
 mod resolvers;
+mod schema;
 mod utils;
 
 use std::sync::Arc;
 
 use crate::{
-    repos::mongodb_user_repo::MongoDBUserRepo,
+    repos::postgres_users_repo::PostgresqlUsersRepo,
     utils::{
         config::{BaseConfig, Config},
         postgresql_data_source::PostgresqlDataSource,
@@ -20,9 +21,11 @@ use async_graphql::{
     EmptySubscription, Schema,
 };
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
+use diesel::prelude::*;
+use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use dotenv::dotenv;
 use log::info;
-use mongodb::{options::ClientOptions, Client};
 use repos::traits::UserRepo;
 use resolvers::{MutationsRoot, QueryRoot};
 
@@ -64,25 +67,24 @@ async fn gql_playgound() -> HttpResponse {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     pretty_env_logger::init();
-    let base_config = BaseConfig::build(&mut NopDataSource {}, None).unwrap();
-    let mut psql_ds = PostgresqlDataSource::new(
-        &base_config.postgres_host,
-        &base_config.postgres_user,
-        &base_config.postgres_password,
-        &base_config.postgres_db,
-    )
-    .unwrap();
-    let config = Config::build(&mut psql_ds, None, base_config).unwrap();
+    let base_config = BaseConfig::build(&mut NopDataSource {}, None)
+        .await
+        .unwrap();
+    let mut psql_ds = PostgresqlDataSource::new(&base_config.postgres_url)
+        .await
+        .unwrap();
+    let config = Config::build(&mut psql_ds, None, base_config)
+        .await
+        .unwrap();
     let config = Arc::new(config);
 
-    let mut client_options = ClientOptions::parse(&config.base.mongo_uri).await.unwrap();
-    client_options.app_name = Some("unboundnotes".to_string());
-    let client = Client::with_options(client_options).unwrap();
-    let db = client.database(&config.base.mongo_db);
+    // let manager = PostgresConnectionManager::new(config.base.postgres_url.parse().unwrap(), NoTls);
+    let manager = ConnectionManager::<PgConnection>::new(&config.base.postgres_url);
+    let pool = Pool::new(manager).unwrap();
 
     info!("GraphiQL IDE: http://localhost:8000");
 
-    let user_repo = MongoDBUserRepo::new(&db);
+    let user_repo = PostgresqlUsersRepo::new(pool.clone());
     let userrepo_arc: Arc<dyn UserRepo> = Arc::new(user_repo);
     let config_clone = Arc::clone(&config);
 

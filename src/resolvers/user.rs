@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::{
     models::user::User,
-    repos::{mongodb_user_repo::MongoDBUserRepo, traits::UserRepo},
-    utils::{config::BaseConfig, jwt::generate_jwt},
+    repos::traits::UserRepo,
+    utils::{config::Config, jwt::generate_jwt},
 };
 
 #[derive(Debug, Error)]
@@ -73,7 +73,7 @@ pub struct UserMutation;
 #[Object]
 impl UserMutation {
     pub async fn create_user(&self, ctx: &Context<'_>, user: CreateUserInput) -> Result<User> {
-        let user_repo = ctx.data::<MongoDBUserRepo>().unwrap();
+        let user_repo = ctx.data::<Arc<dyn UserRepo>>().unwrap();
         if user_repo
             .get_user_by_login(&user.username)
             .await
@@ -96,8 +96,8 @@ impl UserMutation {
     }
 
     pub async fn login_user(&self, ctx: &Context<'_>, login: LoginUserInput) -> Result<String> {
-        let user_repo = ctx.data::<MongoDBUserRepo>().unwrap();
-        let config = ctx.data::<BaseConfig>().unwrap();
+        let user_repo = ctx.data::<Arc<dyn UserRepo>>().unwrap();
+        let config = ctx.data::<Config>().unwrap();
         let user = user_repo
             .get_user_by_login(&login.email)
             .await
@@ -107,7 +107,7 @@ impl UserMutation {
             return Err(UserMutationError::InvalidPassword.extend());
         }
 
-        let token = generate_jwt(&config.mongo_db, &user)
+        let token = generate_jwt(&config.jwt_secret, &user)
             .map_err(|e| UserMutationError::from(e).extend())?;
         Ok(token)
     }

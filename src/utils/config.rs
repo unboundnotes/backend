@@ -6,13 +6,9 @@ fn generate_jwt() -> String {
 
 #[derive(AppConfig)]
 pub struct BaseConfig {
-    pub mongo_uri: String,
-    pub mongo_db: String,
+    #[appconfig(default = "0.0.0.0:8000")]
     pub bind_addr: String,
-    pub postgres_host: String,
-    pub postgres_user: String,
-    pub postgres_password: String,
-    pub postgres_db: String,
+    pub postgres_url: String,
 }
 
 #[derive(AppConfig)]

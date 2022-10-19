@@ -1,19 +1,19 @@
 use argon2::{self, Config as Argon2Config};
 use async_graphql::SimpleObject;
-use mongodb::bson::oid::ObjectId;
+use diesel::prelude::*;
 use rand_core::{OsRng, RngCore};
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone, SimpleObject)]
-pub struct User {
-    #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
-    #[graphql(skip)]
-    pub id: Option<ObjectId>,
+use crate::schema::users;
 
+#[derive(
+    Debug, Serialize, Deserialize, Clone, SimpleObject, Queryable, Insertable, AsChangeset,
+)]
+#[diesel(table_name = users)]
+pub struct User {
     /// The user's unique identifier.
-    #[serde(with = "bson::serde_helpers::uuid_1_as_binary")]
     pub uuid: Uuid,
 
     /// The user's email address.
@@ -35,7 +35,6 @@ impl User {
         let cfg = Argon2Config::default();
         let hashed_password = argon2::hash_encoded(password, &salt, &cfg).unwrap();
         Self {
-            id: None,
             uuid,
             email: email.to_string(),
             username: username.to_string(),

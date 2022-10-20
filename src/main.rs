@@ -6,6 +6,8 @@ mod utils;
 
 use std::sync::Arc;
 
+use std::cell::RefCell;
+
 use crate::{
     repos::postgres_users_repo::PostgresqlUsersRepo,
     utils::{

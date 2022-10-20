@@ -24,7 +24,7 @@ use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use log::info;
 use repos::traits::UserRepo;
 use resolvers::{MutationsRoot, QueryRoot};

@@ -1,4 +1,4 @@
-use std::{error::Error, sync::Arc};
+use std::error::Error;
 
 use anyhow::Result as AResult;
 use appconfig_derive::DataSource;
@@ -53,7 +53,11 @@ impl DataSource for PostgresqlDataSource {
     async fn set(&mut self, key: &str, value: String) -> Result<(), Box<dyn Error>> {
         let stmt = self
             .client
-            .prepare("INSERT INTO data_source (key, value) VALUES ($1, $2)")
+            .prepare(
+                r#"INSERT INTO data_source(key, value)
+            VALUES ($1, $2)
+            ON CONFLICT (key) DO UPDATE SET value = $2;"#,
+            )
             .await?;
         self.client.execute(&stmt, &[&key, &value]).await?;
         Ok(())

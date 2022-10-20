@@ -90,8 +90,8 @@ impl UserMutation {
         {
             return Err(UserMutationError::UserAlreadyExists("email".to_string())).extend();
         }
-        let mut user = User::new(&user.email, &user.username, &Secret::new(user.password));
-        user_repo.create_user(&mut user).await?;
+        let user = User::new(&user.email, &user.username, &Secret::new(user.password));
+        user_repo.create_user(&user).await?;
         Ok(user)
     }
 

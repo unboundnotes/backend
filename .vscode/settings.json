@@ -1,6 +1,7 @@
 {
-    "conventionalCommits.scopes": [
-        "authentication",
-        "appconfig_derive"
-    ]
+  "conventionalCommits.scopes": [
+    "authentication",
+    "appconfig_derive",
+    "workspaces"
+  ]
 }

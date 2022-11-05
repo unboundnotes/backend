@@ -1,11 +1,13 @@
 use std::{io::Read, path::Path, sync::Arc};
 use thiserror::Error;
 
-use async_graphql::{Context, ErrorExtensions, FieldError, InputObject, Object, Result, Upload};
+use async_graphql::{
+    ComplexObject, Context, ErrorExtensions, FieldError, InputObject, Object, Result, Upload,
+};
 use uuid::Uuid;
 
 use crate::{
-    models::Workspace,
+    models::{Page, Workspace},
     repos::traits::{ImagesRepo, WorkspaceRepo},
     utils::{
         img::generate_image,
@@ -122,5 +124,16 @@ impl WorkspaceMutation {
         } else {
             Ok(false)
         }
+    }
+}
+
+#[ComplexObject]
+impl Workspace {
+    pub async fn pages(&self, ctx: &Context<'_>) -> Result<Vec<Page>> {
+        let workspace_repo = ctx.data_unchecked::<Arc<dyn WorkspaceRepo>>();
+        workspace_repo
+            .get_pages(&self.uuid)
+            .await
+            .map_err(|err| err.into())
     }
 }

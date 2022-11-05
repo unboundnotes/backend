@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
     Debug, Serialize, Deserialize, Clone, SimpleObject, Queryable, Insertable, AsChangeset,
 )]
 #[diesel(table_name = workspaces)]
+#[graphql(complex)]
 pub struct Workspace {
     /// The workspace's unique identifier.
     pub uuid: Uuid,
@@ -18,6 +19,7 @@ pub struct Workspace {
     /// The workspace's image or icon.
     pub image: String,
 }
+
 impl Workspace {
     pub(crate) fn new(name: &str, image: &str) -> Self {
         Self {

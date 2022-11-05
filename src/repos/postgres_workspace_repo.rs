@@ -7,7 +7,7 @@ use diesel::{
 use r2d2::Pool;
 use uuid::Uuid;
 
-use crate::models::Workspace;
+use crate::models::{Page, Workspace};
 
 use super::traits::WorkspaceRepo;
 
@@ -69,5 +69,15 @@ impl WorkspaceRepo for PostgresqlWorkspaceRepo {
         let mut conn = self.pool.get()?;
         diesel::delete(workspaces.filter(uuid.eq(uuid_val))).execute(&mut conn)?;
         Ok(())
+    }
+
+    async fn get_pages(&self, uuid_val: &Uuid) -> Result<Vec<Page>, Error> {
+        use crate::schema::pages::dsl::*;
+
+        let mut conn = self.pool.get()?;
+        pages
+            .filter(workspace_uuid.eq(uuid_val))
+            .load::<Page>(&mut conn)
+            .map_err(|e| e.into())
     }
 }

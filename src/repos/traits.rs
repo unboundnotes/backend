@@ -2,7 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::models::{User, Workspace};
+use crate::models::{Page, User, Workspace};
 
 #[async_trait]
 pub trait UserRepo: Send + Sync {
@@ -19,6 +19,7 @@ pub trait WorkspaceRepo: Send + Sync {
     async fn create_workspace(&self, workspace: &Workspace) -> Result<()>;
     async fn update_workspace(&self, workspace: &Workspace) -> Result<()>;
     async fn delete_workspace(&self, uuid: &Uuid) -> Result<()>;
+    async fn get_pages(&self, uuid: &Uuid) -> Result<Vec<Page>>;
 }
 
 #[async_trait]

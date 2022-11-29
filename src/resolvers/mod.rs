@@ -1,10 +1,12 @@
 use async_graphql::MergedObject;
 
 use self::{
+    page::PageMutation,
     user::{UserMutation, UserQuery},
     workspace::{WorkspaceMutation, WorkspaceQuery},
 };
 
+pub mod page;
 pub mod user;
 pub mod workspace;
 
@@ -12,4 +14,4 @@ pub mod workspace;
 pub struct QueryRoot(UserQuery, WorkspaceQuery);
 
 #[derive(MergedObject, Default)]
-pub struct MutationsRoot(UserMutation, WorkspaceMutation);
+pub struct MutationsRoot(UserMutation, WorkspaceMutation, PageMutation);

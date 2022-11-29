@@ -1,5 +1,7 @@
 use async_graphql::{OutputType, SimpleObject};
 
+use crate::models::{Page, Workspace};
+
 #[derive(SimpleObject)]
 pub struct InputError {
     pub field: String,
@@ -7,6 +9,8 @@ pub struct InputError {
 }
 
 #[derive(SimpleObject)]
+#[graphql(concrete(name = "WithErrorWorkspace", params(Workspace)))]
+#[graphql(concrete(name = "WithErrorPage", params(Page)))]
 pub struct WithError<T>
 where
     T: Send + Sync + OutputType,

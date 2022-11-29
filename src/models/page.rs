@@ -33,3 +33,14 @@ pub struct Page {
     /// The page's image or icon.
     pub image: Option<String>,
 }
+
+impl Page {
+    pub fn new(workspace_uuid: Uuid, title: String, image: Option<String>) -> Self {
+        Self {
+            workspace_uuid,
+            uuid: Uuid::new_v4(),
+            title,
+            image,
+        }
+    }
+}

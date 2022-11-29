@@ -23,6 +23,14 @@ pub trait WorkspaceRepo: Send + Sync {
 }
 
 #[async_trait]
+pub trait PageRepo: Send + Sync {
+    async fn get_page_by_uuid(&self, uuid: &Uuid) -> Result<Option<Page>>;
+    async fn create_page(&self, page: &Page) -> Result<()>;
+    async fn update_page(&self, page: &Page) -> Result<()>;
+    async fn delete_page(&self, uuid: &Uuid) -> Result<()>;
+}
+
+#[async_trait]
 pub trait ImagesRepo: Send + Sync {
     async fn upload_image(&self, path: &str, image: &[u8]) -> Result<String>;
     async fn delete_image(&self, path: &str) -> Result<()>;

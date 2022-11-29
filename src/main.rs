@@ -8,10 +8,11 @@ use std::sync::Arc;
 
 use crate::{
     repos::{
-        postgres_users_repo::PostgresqlUsersRepo,
-        postgres_workspace_repo::PostgresqlWorkspaceRepo,
-        s3_images_repo::S3ImagesRepo,
+        images_repo::S3ImagesRepo,
+        page_repo::PageRepo,
         traits::{ImagesRepo, WorkspaceRepo},
+        users_repo::PostgresqlUsersRepo,
+        workspace_repo::PostgresqlWorkspaceRepo,
     },
     utils::{
         config::{BaseConfig, Config},
@@ -104,6 +105,8 @@ async fn main() -> std::io::Result<()> {
         )
         .unwrap();
         let s3_images_repo_arc: Arc<dyn ImagesRepo> = Arc::new(s3_images_repo);
+        let page_repo = PageRepo::new(pool.clone());
+        let pagerepo_arc: Arc<dyn repos::traits::PageRepo> = Arc::new(page_repo);
 
         let cors = Cors::default()
             .allow_any_origin()
@@ -130,12 +133,14 @@ async fn main() -> std::io::Result<()> {
                 .data(Arc::clone(&config_clone))
                 .data(Arc::clone(&workspacerepo_arc))
                 .data(Arc::clone(&s3_images_repo_arc))
+                .data(Arc::clone(&pagerepo_arc))
                 .finish(),
             ))
             .app_data(Data::from(Arc::clone(&userrepo_arc)))
             .app_data(Data::from(Arc::clone(&config_clone)))
             .app_data(Data::from(Arc::clone(&workspacerepo_arc)))
             .app_data(Data::from(Arc::clone(&s3_images_repo_arc)))
+            .app_data(Data::from(Arc::clone(&pagerepo_arc)))
             .service(web::resource("/").guard(guard::Post()).to(index))
             .service(web::resource("/").guard(guard::Get()).to(gql_playgound))
     })

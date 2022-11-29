@@ -62,6 +62,7 @@ pub struct WorkspaceMutation;
 
 #[Object]
 impl WorkspaceMutation {
+    // TODO: collapse multiple spaces into one
     pub async fn create_workspace(
         &self,
         ctx: &Context<'_>,

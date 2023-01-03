@@ -15,6 +15,7 @@ pub fn generate_jwt(secret: &str, user: &User) -> Result<String> {
     Ok(token)
 }
 
+#[allow(dead_code)]
 pub fn verify_token(secret: &str, token: &str) -> Result<Uuid> {
     let key: Hmac<Sha256> = Hmac::new_from_slice(secret.as_bytes())?;
     let claims: BTreeMap<String, String> = token.verify_with_key(&key)?;
